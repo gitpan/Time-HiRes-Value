@@ -2,13 +2,12 @@
 
 use strict;
 use Test::More tests => 22;
+use Test::Exception;
 
 use Time::HiRes::Value;
 
-eval {
-   Time::HiRes::Value->new( "Hello" );
-};
-ok( $@ ne "", 'Exception (not convertable)' );
+dies_ok( sub { Time::HiRes::Value->new( "Hello" ); }, 
+         'Exception (not convertable)' );
 
 my $t1 = Time::HiRes::Value->new( 1 );
 ok( defined $t1, 'defined $t1' );
