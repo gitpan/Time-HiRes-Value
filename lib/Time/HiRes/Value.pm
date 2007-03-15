@@ -1,7 +1,7 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2006 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2006,2007 -- leonerd@leonerd.org.uk
 
 package Time::HiRes::Value;
 
@@ -12,7 +12,7 @@ use Carp;
 use Time::HiRes qw( gettimeofday );
 use POSIX qw( floor );
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 =head1 NAME
 
