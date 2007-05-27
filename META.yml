@@ -1,6 +1,6 @@
 ---
 name: Time-HiRes-Value
-version: 0.03
+version: 0.04
 author:
   - 'Paul Evans E<lt>leonerd@leonerd.org.ukE<gt>'
 abstract: |-
@@ -15,5 +15,5 @@ build_requires:
 provides:
   Time::HiRes::Value:
     file: lib/Time/HiRes/Value.pm
-    version: 0.03
+    version: 0.04
 generated_by: Module::Build version 0.26

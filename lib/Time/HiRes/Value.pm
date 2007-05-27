@@ -12,7 +12,11 @@ use Carp;
 use Time::HiRes qw( gettimeofday );
 use POSIX qw( floor );
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
+
+# Since we use this number quite a lot, make a constant out of it to avoid
+# typoes
+use constant USEC => 1_000_000;
 
 =head1 NAME
 
@@ -31,7 +35,7 @@ rounding errors result.
 
 =cut
 
-# Internal helper
+# Internal helpers
 sub _split_sec_usec($)
 {
    my ( $t ) = @_;
@@ -49,11 +53,11 @@ sub _split_sec_usec($)
       $usec = $2;
 
       # Pad out to 6 digits
-      $usec .= "0" while( length( $usec ) < 6 );
+      $usec .= "0" x ( 6 - length( $usec ) );
    }
-   elsif( $t =~ m/^\d+/ ) {
+   elsif( $t =~ m/^(\d+)$/ ) {
       # Plain integer
-      $sec  = $t;
+      $sec  = $1;
       $usec = 0;
    }
    else {
@@ -63,7 +67,7 @@ sub _split_sec_usec($)
    if( $negative ) {
       if( $usec != 0 ) {
          $sec  = -$sec - 1;
-         $usec = 1000000 - $usec;
+         $usec = USEC - $usec;
       }
       else {
          $sec = -$sec;
@@ -101,16 +105,30 @@ sub new
 {
    my $class = shift;
 
-   my $self;
+   my ( $sec, $usec );
+
    if( @_ == 2 ) {
-      $self = [@_]; # a clone
+      croak "Cannot accept '$_[0]' for seconds for a "      . __PACKAGE__ unless $_[0] =~ m/^[+-]?\d+(?:\.\d+)?$/;
+      croak "Cannot accept '$_[1]' for microseconds for a " . __PACKAGE__ unless $_[1] =~ m/^[+-]?\d+(?:\.\d+)?$/;
+
+      ( $sec, $usec ) = @_;
    }
    elsif( @_ == 1 ) {
-      $self = _split_sec_usec( $_[0] );
+      ( $sec, $usec ) = @{ _split_sec_usec( $_[0] ) };
    }
    else {
-      die "Bad number of elements in \@_";
+      carp "Bad number of elements in \@_";
    }
+
+   # Handle case where $sec is non-integer
+   $usec += USEC * ( $sec - int( $sec ) );
+   $sec = int( $sec );
+
+   # Move overflow from $usec into $sec
+   $sec += floor( $usec / USEC );
+   $usec %= USEC;
+
+   my $self = [ $sec, $usec ];
 
    return bless $self, $class;
 }
@@ -129,21 +147,12 @@ sub now
    return $class->new( @now );
 }
 
-sub normalise
-{
-   my $self = shift;
-
-   my $usec = $self->[1] % 1000000;
-   $self->[0] += floor($self->[1] / 1000000);
-   $self->[1] = $usec;
-
-   return $self;
-}
-
 use overload '""'  => \&STRING,
              '0+'  => \&NUMBER,
-             '+'   => \&sum,
-             '-'   => \&diff,
+             '+'   => \&add,
+             '-'   => \&sub,
+             '*'   => \&mult,
+             '/'   => \&div,
              '<=>' => \&cmp;
 
 =head1 OPERATORS
@@ -156,9 +165,12 @@ Each of the methods here overloads an operator
 
 =head2 "$self"
 
-This method returns a string representation of the time, in the form
+This method returns a string representation of the time, in the form of a
+decimal string with 6 decimal places. For example
 
- $sec.$usec
+ 15.000000
+ -3.000000
+  4.235996
 
 A leading C<-> sign will be printed if the stored time is negative, and the
 C<I<$usec>> part will always contain 6 digits.
@@ -168,8 +180,13 @@ C<I<$usec>> part will always contain 6 digits.
 sub STRING
 {
    my $self = shift;
-   if( $self->[0] < 0 && $self->[1] != 0 ) {
-      return sprintf( '%d.%06d', $self->[0] + 1, 1000000 - $self->[1] );
+   if( $self->[0] < -1 && $self->[1] != 0 ) {
+      # Fractional below -1.000000
+      return sprintf( '%d.%06d', $self->[0] + 1, USEC - $self->[1] );
+   }
+   elsif( $self->[0] == -1 && $self->[1] != 0 ) {
+      # Special case - between -1 and 0 need to handle the sign carefully
+      return sprintf( '-0.%06d', USEC - $self->[1] );
    }
    else {
       return sprintf( '%d.%06d', $self->[0], $self->[1] );
@@ -179,8 +196,10 @@ sub STRING
 sub NUMBER
 {
    my $self = shift;
-   return $self->[0] + ($self->[1] / 1000000);
+   return $self->[0] + ($self->[1] / USEC);
 }
+
+=head2 $self->add( $other )
 
 =head2 $self->sum( $other )
 
@@ -190,19 +209,25 @@ This method returns a new C<Time::HiRes::Value> value, containing the sum of the
 passed values. If a string is passed, it will be parsed according to the same
 rules as for the C<new()> constructor.
 
+Note that C<sum> is provided as an alias to C<add>.
+
 =cut
 
-sub sum
+sub add
 {
    my $self = shift;
    my ( $other ) = @_;
 
-   if( !ref( $other ) || !$other->isa( "Time::HiRes::Value" ) ) {
+   if( !ref( $other ) || !$other->isa( __PACKAGE__ ) ) {
       $other = _split_sec_usec( $other );
    }
 
-   return Time::HiRes::Value->new( $self->[0] + $other->[0], $self->[1] + $other->[1] )->normalise();
+   return Time::HiRes::Value->new( $self->[0] + $other->[0], $self->[1] + $other->[1] );
 }
+
+*sum = \&add;
+
+=head2 $self->sub( $other )
 
 =head2 $self->diff( $other )
 
@@ -212,20 +237,72 @@ This method returns a new C<Time::HiRes::Value> value, containing the difference
 of the passed values. If a string is passed, it will be parsed according to
 the same rules as for the C<new()> constructor.
 
+Note that C<diff> is provided as an alias to C<sub>.
+
 =cut
 
-sub diff
+sub sub
 {
    my $self = shift;
    my ( $other, $swap ) = @_;
 
-   if( !ref( $other ) || !$other->isa( "Time::HiRes::Value" ) ) {
+   if( !ref( $other ) || !$other->isa( __PACKAGE__ ) ) {
       $other = _split_sec_usec( $other );
    }
 
    ( $self, $other ) = ( $other, $self ) if( $swap );
 
-   return Time::HiRes::Value->new( $self->[0] - $other->[0], $self->[1] - $other->[1] )->normalise();
+   return Time::HiRes::Value->new( $self->[0] - $other->[0], $self->[1] - $other->[1] );
+}
+
+*diff = \&sub;
+
+=head2 $self->mult( $other )
+
+=head2 $self * $other
+
+This method returns a new C<Time::HiRes::Value> value, containing the product
+of the passed values. C<$other> must not itself be a C<Time::HiRes::Value>
+object; it is an error to attempt to multiply two times together.
+
+=cut
+
+sub mult
+{
+   my $self = shift;
+   my ( $other ) = @_;
+
+   if( ref( $other ) and $other->isa( __PACKAGE__ ) ) {
+      croak "Cannot multiply a ".__PACKAGE__." with another";
+   }
+
+   return Time::HiRes::Value->new( $self->[0] * $other, $self->[1] * $other );
+}
+
+=head2 $self->div( $other )
+
+=head2 $self / $other
+
+This method returns a new C<Time::HiRes::Value> value, containing the quotient
+of the passed values. C<$other> must not itself be a C<Time::HiRes::Value>
+object; it is an error for a time to be used as a divisor.
+
+=cut
+
+sub div
+{
+   my $self = shift;
+   my ( $other, $swap ) = @_;
+
+   croak "Cannot divide a quantity by a ".__PACKAGE__ if $swap;
+
+   if( ref( $other ) and $other->isa( __PACKAGE__ ) ) {
+      croak "Cannot divide a ".__PACKAGE__." by another";
+   }
+
+   croak "Illegal division by zero" if $other == 0;
+
+   return Time::HiRes::Value->new( $self->[0] / $other, $self->[1] / $other );
 }
 
 =head2 $self->cmp( $other )
@@ -244,7 +321,7 @@ sub cmp
    my $self = shift;
    my ( $other ) = @_;
 
-   if( !ref( $other ) || !$other->isa( "Time::HiRes::Value" ) ) {
+   if( !ref( $other ) || !$other->isa( __PACKAGE__ ) ) {
       $other = _split_sec_usec( $other );
    }
 
