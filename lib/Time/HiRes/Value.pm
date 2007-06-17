@@ -12,7 +12,7 @@ use Carp;
 use Time::HiRes qw( gettimeofday );
 use POSIX qw( floor );
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 # Since we use this number quite a lot, make a constant out of it to avoid
 # typoes
