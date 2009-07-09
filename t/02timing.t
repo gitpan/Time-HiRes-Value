@@ -14,6 +14,6 @@ my $end = Time::HiRes::Value->now();
 my $interval = $end - $start;
 
 # Hard to be exact about this interval, but we expect it to be between 0.9 and
-# 1.1 seconds
-is( $interval > 0.9, 1 );
-is( $interval < 1.1, 1 );
+# 1.5 seconds
+ok( $interval > 0.9, 'Interval is at least 0.9 seconds' );
+ok( $interval < 1.5, 'Interval is no more than 1.5 seconds' );

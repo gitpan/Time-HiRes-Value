@@ -17,7 +17,7 @@ dies_ok( sub { Time::HiRes::Value->new( "hello", "world" ); },
 
 my $t1 = Time::HiRes::Value->new( 1 );
 ok( defined $t1, 'defined $t1' );
-is( ref $t1, "Time::HiRes::Value", 'ref $t1' );
+isa_ok( $t1, "Time::HiRes::Value", '$t1 isa Time::HiRes::Value' );
 
 is( "$t1", "1.000000", 'Stringify' );
 is( ref( $t1->NUMBER ), "", 'Numerify returns plain scalar' );
@@ -47,12 +47,12 @@ cmp_ok( $t3, '>', $t2, 'Compare > Value2' );
 
 my $t4 = $t1 + 1;
 cmp_ok( $t4, '==', 2, 'add scalar 1' );
-is( ref($t4), "Time::HiRes::Value", 'add scalar 1 reftype' );
+isa_ok( $t4, "Time::HiRes::Value", 'add scalar 1 reftype' );
 $t4 = $t2 + 2.3;
 cmp_ok( $t4, '==', 3.8, 'add scalar 2.3' );
 $t4 = 1 + $t1;
 cmp_ok( $t4, '==', 2, 'add scalar 1 swapped' );
-is( ref($t4), "Time::HiRes::Value", 'add scalar 1 swapped reftype' );
+isa_ok( $t4, "Time::HiRes::Value", 'add scalar 1 swapped reftype' );
 
 $t4 = $t1 + -1;
 cmp_ok( $t4, '==', 0, 'inverse of addition' );
@@ -65,10 +65,10 @@ cmp_ok( $t1 + 3, '==', 3 + $t1, 'commutativity of addition' );
 
 $t4 = $t3 - 2;
 cmp_ok( $t4, '==', 0.0005, 'subtract scalar 2' );
-is( ref($t4), "Time::HiRes::Value", 'subtrace scalar 2 reftype' );
+isa_ok( $t4, "Time::HiRes::Value", 'subtrace scalar 2 reftype' );
 $t4 = 4 - $t2;
 cmp_ok( $t4, '==', 2.5, 'subtract scalar 4 swapped' );
-is( ref($t4), "Time::HiRes::Value", 'subtrace scalar 4 swapped reftype' );
+isa_ok( $t4, "Time::HiRes::Value", 'subtrace scalar 4 swapped reftype' );
 
 $t4 = $t1 - 3.1;
 cmp_ok( $t4, '==', -2.1, 'subtract scalar 3.1, negative result' );

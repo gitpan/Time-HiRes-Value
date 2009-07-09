@@ -1,18 +1,19 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2006,2007 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2006,2007,2009 -- leonerd@leonerd.org.uk
 
 package Time::HiRes::Value;
 
 use strict;
+use warnings;
 
 use Carp;
 
 use Time::HiRes qw( gettimeofday );
 use POSIX qw( floor );
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 # Since we use this number quite a lot, make a constant out of it to avoid
 # typoes
@@ -341,8 +342,8 @@ __END__
 
 L<Time::HiRes> - Obtain system timers in resolution greater than 1 second
 
+=back
+
 =head1 AUTHOR
 
-Paul Evans E<lt>leonerd@leonerd.org.ukE<gt>
-
-=back
+Paul Evans <leonerd@leonerd.org.uk>

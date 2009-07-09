@@ -5,3 +5,5 @@ MANIFEST			This list of files
 META.yml
 t/01test.t
 t/02timing.t
+README
+LICENSE
